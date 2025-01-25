@@ -3,9 +3,6 @@ from player import Player
 from blow_listener import blow_listener
 import pygame
 import sys
-import random
-import math
-from button import Button
 import threading
 
 import random
@@ -16,10 +13,10 @@ from trash_enemy import TrashEnemy
 class Game:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Sheubere")
 
         pygame.display.set_caption("Endless Runner")
 
+        self.isRunning = True
         self.WIDTH = 700
         self.HEIGHT = 1080
         self.BUBBLE_WIDTH = 100
@@ -31,8 +28,16 @@ class Game:
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
         self.scroll_speed = 5
-        self.max_object = 2
+        self.max_enemy_object = 2
+        self.max_trash_object = 2
         self.render_offset = 0
+
+        self.score_font = pygame.font.SysFont('sans-serif', 32)
+        self.score = 0
+
+        self.game_over_font = pygame.font.SysFont('sans-serif', 32)
+        self.game_over_message = self.game_over_font.render(
+            "Game Over", True, (255, 0, 0))
 
         self.enemies = generate_objects(2, self.WIDTH, self.MIN_DISTANCE)
         self.trashes = generate_objects(2, self.WIDTH, self.MIN_DISTANCE)
@@ -69,58 +74,19 @@ class Game:
         threading.Thread(target=blow_listener, args=(
             self.player,), daemon=True).start()
 
-        self.enemy = [
-            {
-                "rect": pygame.Rect(
-                    random.randint(0, self.WIDTH -
-                                   self.enemy_img.get_width() - 5),
-                    random.randint(-300, 0),
-                    50,
-                    50
-                ),
-                "direction": random.choice([-1, 1]),
-                "space_sensitive": random.choices([True, False], weights=[3, 7])[0],
-                "move_count": 0  # Count of moves when spacebar is pressed
-            }
-
-            for _ in range(5)
-        ]
-        self.spawn_timer = 0
-        self.max_enemy = 10
-        self.isEnemyChange = False
-
-    def collision(self, x1, y1, x2, y2):
-        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) < 27
-
-    def drawEnemy(self, enemy, i):
-        enemyImgStr = f"enemy_{'1' if i % 3 else '2'}.png"
-        enemyImg = pygame.image.load(f"data/images/enemies/{enemyImgStr}")
-        enemyImg = pygame.transform.scale(enemyImg, (50, 50))
-        self.screen.blit(enemyImg, (enemy["rect"].x, enemy["rect"].y))
-
-    def drawButton(self, text, image):
-        return Button(image, (self.WIDTH / 2, self.HEIGHT / 2), text, 'sans-serif', (255, 255, 255), (250, 250, 250))
-
     def run(self):
-        while True:
-            self.screen.fill((14, 219, 248))
-            img_r = pygame.Rect(
-                self.img_pos[0],
-                self.img_pos[1],
-                self.img.get_width(),
-                self.img.get_height(),
-            )
-            # Checking collisions
-            if img_r.colliderect(self.collision_area):
-                pygame.draw.rect(self.screen, (0, 100, 255),
-                                 self.collision_area)
-            else:
-                pygame.draw.rect(self.screen, (0, 50, 155),
-                                 self.collision_area)
+        last_enemy_update_score = 0
+        last_trash_update_score = 0
 
-            # This is some GENIUS shit to move Left or Right based on keys (booleans are casted to ints and...)
-            self.img_pos[0] += (self.movement[1] - self.movement[0]) * 5
-            self.screen.blit(self.img, self.img_pos)
+        while self.isRunning:
+
+            self.player_rect = self.player.get_rect()
+            self.screen.blit(self.assets["background"], (-2, 0))
+            self.render_offset = self.player.get_vy()
+
+            score_text = self.score_font.render(
+                f"Score: {self.score}", True, (255, 255, 255))
+            self.screen.blit(score_text, (10, 10))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -151,6 +117,7 @@ class Game:
             # Update and draw enemies
             for i, enemy in enumerate(self.enemies):
                 enemy.move(self.HEIGHT, self.WIDTH, self.render_offset)
+
                 enemyImgStr = f"enemy{'1' if i % 3 else '2'}.gif"
                 image = pygame.image.load(f"data/images/{enemyImgStr}")
                 image = pygame.transform.scale(
@@ -161,11 +128,13 @@ class Game:
 
                 # Check collision with player
                 if enemy.check_collision(self.player_rect):
+
                     print("Game Over!")
 
             # Spawn new enemies up to the maximum count
             self.enemy_spawn_timer += 1
-            if self.enemy_spawn_timer > 120 and len(self.enemies) < self.max_object:
+            if self.enemy_spawn_timer > 120 and len(self.enemies) < self.max_enemy_object:
+
                 while True:
                     new_enemy = TrashEnemy(
                         random.randint(0, self.WIDTH - 50),
@@ -196,11 +165,13 @@ class Game:
 
                 # Check collision with player
                 if trash.check_collision(self.player_rect):
-                    print("Collect trash")
+                    trash.update_position(random.randint(
+                        0, self.WIDTH - 50), random.randint(-300, 0))
+                    self.score += 1
 
             # Spawn new trashes up to the maximum count
             self.trash_spawn_timer += 1
-            if self.trash_spawn_timer > 120 and len(self.trashes) < self.max_object:
+            if self.trash_spawn_timer > 120 and len(self.trashes) < self.max_trash_object:
                 while True:
                     new_trash = TrashEnemy(
                         random.randint(0, self.WIDTH - 50),
@@ -217,8 +188,18 @@ class Game:
                         self.trashes.append(new_trash)
                         break
                 self.trash_spawn_timer = 0
+
+            if self.score >= last_enemy_update_score + 5 and self.score % 5 == 0:
+                self.max_enemy_object += 1
+                last_enemy_update_score = self.score
+
+            if self.score >= last_trash_update_score + 10 and self.score % 10 == 0:
+                self.max_trash_object += 1
+                last_trash_update_score = self.score
+
             self.player.update(self.WIDTH, self.HEIGHT)
             self.player.draw(self.screen)
+
             pygame.display.update()
             self.clock.tick(60)
 

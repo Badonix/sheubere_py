@@ -20,10 +20,15 @@ class TrashEnemy:
     def draw(self, screen, image):
         screen.blit(image, self.rect)
 
+    def update_position(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
+
     def check_collision(self, player_rect):
         return self.rect.colliderect(player_rect)
 
     @staticmethod
     def check_distance(rect1, rect2, threshold):
-        distance = math.sqrt((rect1.x - rect2.x) ** 2 + (rect1.y - rect2.y) ** 2)
+        distance = math.sqrt((rect1.x - rect2.x) ** 2 +
+                             (rect1.y - rect2.y) ** 2)
         return distance > threshold
