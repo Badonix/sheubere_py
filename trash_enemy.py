@@ -11,7 +11,7 @@ class TrashEnemy:
 
         self.rect.y += 2
         if offset_y < 0:
-            self.rect.y -= offset_y
+            self.rect.y -= offset_y * 0.7
 
         if self.rect.y > height:
             self.rect.y = random.randint(-100, 0)
