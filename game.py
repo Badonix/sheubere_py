@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import math
+from button import Button
 
 
 class Game:
@@ -13,7 +14,8 @@ class Game:
         self.Y_OFFSET = 100
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
-        self.img = pygame.image.load("data/images/clouds/cloud_1.png")
+        self.img = pygame.image.load("data/images/player/player.png")
+        self.img = pygame.transform.scale(self.img, (80, 80))
         self.img.set_colorkey((0, 0, 0))
         self.enemy_img = pygame.image.load(
             "data/images/entities/enemy/idle/00.png")
@@ -23,9 +25,6 @@ class Game:
             self.screen.get_width() / 2 - self.img.get_width() / 2,
             self.screen.get_height() - self.Y_OFFSET,
         ]
-        self.collision_area = pygame.Rect(
-            self.start_pos[0] - 100, self.start_pos[1] - self.Y_OFFSET, 50, 300
-        )
         self.img_pos = self.start_pos
 
         self.enemy = [
@@ -57,24 +56,12 @@ class Game:
         enemyImg = pygame.transform.scale(enemyImg, (50, 50))
         self.screen.blit(enemyImg, (enemy["rect"].x, enemy["rect"].y))
 
+    def drawButton(self, text, image):
+        return Button(image, (self.WIDTH / 2, self.HEIGHT / 2), text, 'sans-serif', (255, 255, 255), (250, 250, 250))
+
     def run(self):
         while True:
             self.screen.fill((14, 219, 248))
-            img_r = pygame.Rect(
-                self.img_pos[0],
-                self.img_pos[1],
-                self.img.get_width(),
-                self.img.get_height(),
-            )
-
-            # Checking collisions
-            if img_r.colliderect(self.collision_area):
-                pygame.draw.rect(self.screen, (0, 100, 255),
-                                 self.collision_area)
-            else:
-                pygame.draw.rect(self.screen, (0, 50, 155),
-                                 self.collision_area)
-
             # Movement logic for the player
             self.img_pos[0] += (self.movement[1] - self.movement[0]) * 5
             self.screen.blit(self.img, self.img_pos)
