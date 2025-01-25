@@ -1,7 +1,9 @@
 from data.scripts.utils import load_image
 from player import Player
+from blow_listener import blow_listener
 import pygame
 import sys
+import threading
 
 
 class Game:
@@ -15,35 +17,28 @@ class Game:
         self.clock = pygame.time.Clock()
         self.scroll_speed = 5
 
-        # Assets
         self.assets = {
             "player": load_image("tiles/large_decor/1.png"),
             "enemy": load_image("entities/enemy/idle/00.png"),
         }
 
-        # Initialize player
         start_pos = [
             self.WIDTH / 2 - self.assets["player"].get_width() / 2,
             self.HEIGHT - 200,
         ]
         self.player = Player(self.assets["player"], start_pos)
+        threading.Thread(target=blow_listener, args=(self.player,), daemon=True).start()
 
     def run(self):
         while True:
             self.screen.fill((14, 219, 248))
-
-            # Event handling
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 self.player.handle_input(event)
-
-            # Update and draw player
-            self.player.update(self.WIDTH)
+            self.player.update(self.WIDTH, self.HEIGHT)
             self.player.draw(self.screen)
-
-            # Update display and tick
             pygame.display.update()
             self.clock.tick(60)
 
