@@ -1,9 +1,13 @@
-from data.scripts.utils import load_image
+from data.scripts.utils import load_image, generate_objects
 from player import Player
 from blow_listener import blow_listener
 import pygame
 import sys
 import threading
+
+import random
+
+from trash_enemy import TrashEnemy
 
 
 class Game:
@@ -18,9 +22,22 @@ class Game:
         self.BUBBLE_HEIGHT = 100
         self.PLANT_WIDTH = 100
         self.PLANT_HEIGHT = 200
+        self.MIN_DISTANCE = 100
+        self.Y_OFFSET = 100
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
         self.scroll_speed = 5
+        self.max_object = 2
+        self.render_offset = 0
+
+        self.enemies = generate_objects(2, self.WIDTH, self.MIN_DISTANCE)
+        self.trashes = generate_objects(2, self.WIDTH, self.MIN_DISTANCE)
+
+        self.enemy_spawn_timer = 0
+        self.trash_spawn_timer = 0
+        self.player_rect = pygame.Rect(
+            self.WIDTH // 2 - 40, self.HEIGHT - self.Y_OFFSET, 80, 80
+        )
 
         # ASSETS
         self.assets = {
@@ -49,7 +66,9 @@ class Game:
 
     def run(self):
         while True:
+            self.player_rect = self.player.get_rect()
             self.screen.blit(self.assets["background"], (-2, 0))
+            self.render_offset = self.player.get_vy()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -75,6 +94,76 @@ class Game:
                 self.assets["background_bubbles"],
                 (10, 50),
             )
+
+            # Update and draw enemies
+            for i, enemy in enumerate(self.enemies):
+                enemy.move(self.HEIGHT, self.WIDTH, self.render_offset)
+                enemyImgStr = f"enemy{'1' if i % 3 else '2'}.gif"
+                image = pygame.image.load(f"data/images/{enemyImgStr}")
+                image = pygame.transform.scale(
+                    image, (enemy.rect.width, enemy.rect.height)
+                )
+
+                enemy.draw(self.screen, image)
+
+                # Check collision with player
+                if enemy.check_collision(self.player_rect):
+                    print("Game Over!")
+
+            # Spawn new enemies up to the maximum count
+            self.enemy_spawn_timer += 1
+            if self.enemy_spawn_timer > 120 and len(self.enemies) < self.max_object:
+                while True:
+                    new_enemy = TrashEnemy(
+                        random.randint(0, self.WIDTH - 50),
+                        random.randint(-300, 0),
+                        50,
+                        50,
+                    )
+                    if all(
+                        TrashEnemy.check_distance(
+                            new_enemy.rect, enemy.rect, self.MIN_DISTANCE
+                        )
+                        for enemy in self.enemies
+                    ):
+                        self.enemies.append(new_enemy)
+                        break
+                self.enemy_spawn_timer = 0
+
+            # Update and draw trashes
+            for i, trash in enumerate(self.trashes):
+                trash.move(self.HEIGHT, self.WIDTH, self.render_offset)
+                trashImgStr = f"trash{'1' if i % 3 else '3'}.png"
+                image = pygame.image.load(f"data/images/{trashImgStr}")
+                image = pygame.transform.scale(
+                    image, (trash.rect.width, trash.rect.height)
+                )
+
+                trash.draw(self.screen, image)
+
+                # Check collision with player
+                if trash.check_collision(self.player_rect):
+                    print("Collect trash")
+
+            # Spawn new trashes up to the maximum count
+            self.trash_spawn_timer += 1
+            if self.trash_spawn_timer > 120 and len(self.trashes) < self.max_object:
+                while True:
+                    new_trash = TrashEnemy(
+                        random.randint(0, self.WIDTH - 50),
+                        random.randint(-300, 0),
+                        50,
+                        50,
+                    )
+                    if all(
+                        TrashEnemy.check_distance(
+                            new_trash.rect, trash.rect, self.MIN_DISTANCE
+                        )
+                        for trash in self.trashes
+                    ):
+                        self.trashes.append(new_trash)
+                        break
+                self.trash_spawn_timer = 0
             self.player.update(self.WIDTH, self.HEIGHT)
             self.player.draw(self.screen)
             pygame.display.update()

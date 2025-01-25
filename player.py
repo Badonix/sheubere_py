@@ -7,6 +7,7 @@ class Player:
         self.velocity_x = 0
         self.acceleration_x = acceleration
         self.acceleration_y = acceleration
+        self.height = height
         self.gravity = 0.3
         self.max_speed_x = max_speed
         self.max_speed_y = 1
@@ -50,11 +51,15 @@ class Player:
             0, min(screen_width - self.image.get_width(), self.position[0])
         )
         self.position[1] = max(
-            0, min(screen_height - self.image.get_height(), self.position[1])
+            self.height / 4,
+            min(screen_height - self.image.get_height(), self.position[1]),
         )
 
     def draw(self, screen):
         screen.blit(self.image, self.position)
+
+    def get_vy(self):
+        return self.velocity_y
 
     def get_rect(self):
         return pygame.Rect(
