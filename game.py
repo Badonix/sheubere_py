@@ -3,6 +3,9 @@ from player import Player
 from blow_listener import blow_listener
 import pygame
 import sys
+import random
+import math
+from button import Button
 import threading
 
 import random
@@ -13,6 +16,7 @@ from trash_enemy import TrashEnemy
 class Game:
     def __init__(self):
         pygame.init()
+        pygame.display.set_caption("Sheubere")
 
         pygame.display.set_caption("Endless Runner")
 
@@ -62,13 +66,61 @@ class Game:
         self.player = Player(self.assets["player"], self.WIDTH, self.HEIGHT)
 
         # DO NOT TOUCH
-        threading.Thread(target=blow_listener, args=(self.player,), daemon=True).start()
+        threading.Thread(target=blow_listener, args=(
+            self.player,), daemon=True).start()
+
+        self.enemy = [
+            {
+                "rect": pygame.Rect(
+                    random.randint(0, self.WIDTH -
+                                   self.enemy_img.get_width() - 5),
+                    random.randint(-300, 0),
+                    50,
+                    50
+                ),
+                "direction": random.choice([-1, 1]),
+                "space_sensitive": random.choices([True, False], weights=[3, 7])[0],
+                "move_count": 0  # Count of moves when spacebar is pressed
+            }
+
+            for _ in range(5)
+        ]
+        self.spawn_timer = 0
+        self.max_enemy = 10
+        self.isEnemyChange = False
+
+    def collision(self, x1, y1, x2, y2):
+        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) < 27
+
+    def drawEnemy(self, enemy, i):
+        enemyImgStr = f"enemy_{'1' if i % 3 else '2'}.png"
+        enemyImg = pygame.image.load(f"data/images/enemies/{enemyImgStr}")
+        enemyImg = pygame.transform.scale(enemyImg, (50, 50))
+        self.screen.blit(enemyImg, (enemy["rect"].x, enemy["rect"].y))
+
+    def drawButton(self, text, image):
+        return Button(image, (self.WIDTH / 2, self.HEIGHT / 2), text, 'sans-serif', (255, 255, 255), (250, 250, 250))
 
     def run(self):
         while True:
-            self.player_rect = self.player.get_rect()
-            self.screen.blit(self.assets["background"], (-2, 0))
-            self.render_offset = self.player.get_vy()
+            self.screen.fill((14, 219, 248))
+            img_r = pygame.Rect(
+                self.img_pos[0],
+                self.img_pos[1],
+                self.img.get_width(),
+                self.img.get_height(),
+            )
+            # Checking collisions
+            if img_r.colliderect(self.collision_area):
+                pygame.draw.rect(self.screen, (0, 100, 255),
+                                 self.collision_area)
+            else:
+                pygame.draw.rect(self.screen, (0, 50, 155),
+                                 self.collision_area)
+
+            # This is some GENIUS shit to move Left or Right based on keys (booleans are casted to ints and...)
+            self.img_pos[0] += (self.movement[1] - self.movement[0]) * 5
+            self.screen.blit(self.img, self.img_pos)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -88,7 +140,8 @@ class Game:
             )
             self.screen.blit(
                 self.assets["background_bubbles"],
-                (self.WIDTH - self.assets["background_bubbles"].get_width(), 50),
+                (self.WIDTH -
+                 self.assets["background_bubbles"].get_width(), 50),
             )
             self.screen.blit(
                 self.assets["background_bubbles"],
