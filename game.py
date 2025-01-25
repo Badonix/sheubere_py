@@ -7,7 +7,7 @@ import math
 class Game:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("FUCKING GAME")
+        pygame.display.set_caption("Sheubere")
         self.WIDTH = 700
         self.HEIGHT = 1080
         self.Y_OFFSET = 100
@@ -29,22 +29,33 @@ class Game:
         self.img_pos = self.start_pos
 
         self.enemy = [
-            pygame.Rect(
-                random.randint(0, self.WIDTH - self.enemy_img.get_width() - 5),
-                random.randint(-300, 0),
-                50,
-                50
-            )
+            {
+                "rect": pygame.Rect(
+                    random.randint(0, self.WIDTH -
+                                   self.enemy_img.get_width() - 5),
+                    random.randint(-300, 0),
+                    50,
+                    50
+                ),
+                "direction": random.choice([-1, 1]),
+                "space_sensitive": random.choices([True, False], weights=[3, 7])[0],
+                "move_count": 0  # Count of moves when spacebar is pressed
+            }
+
             for _ in range(5)
         ]
         self.spawn_timer = 0
         self.max_enemy = 10
+        self.isEnemyChange = False
 
     def collision(self, x1, y1, x2, y2):
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) < 27
 
-    def drawEnemy(self, rect):
-        self.screen.blit(self.enemy_img, (rect.x, rect.y))
+    def drawEnemy(self, enemy, i):
+        enemyImgStr = f"enemy_{'1' if i % 3 else '2'}.png"
+        enemyImg = pygame.image.load(f"data/images/enemies/{enemyImgStr}")
+        enemyImg = pygame.transform.scale(enemyImg, (50, 50))
+        self.screen.blit(enemyImg, (enemy["rect"].x, enemy["rect"].y))
 
     def run(self):
         while True:
@@ -55,6 +66,7 @@ class Game:
                 self.img.get_width(),
                 self.img.get_height(),
             )
+
             # Checking collisions
             if img_r.colliderect(self.collision_area):
                 pygame.draw.rect(self.screen, (0, 100, 255),
@@ -63,7 +75,7 @@ class Game:
                 pygame.draw.rect(self.screen, (0, 50, 155),
                                  self.collision_area)
 
-            # This is some GENIUS shit to move Left or Right based on keys (booleans are casted to ints and...)
+            # Movement logic for the player
             self.img_pos[0] += (self.movement[1] - self.movement[0]) * 5
             self.screen.blit(self.img, self.img_pos)
 
@@ -73,43 +85,64 @@ class Game:
                 self.img_pos[0] = self.WIDTH - self.img.get_width() - 5
 
             for event in pygame.event.get():
-
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT and self.img_pos[0]:
+                    if event.key == pygame.K_LEFT:
                         self.movement[0] = True
                     if event.key == pygame.K_RIGHT:
                         self.movement[1] = True
+                    if event.key == pygame.K_SPACE:
+                        self.isEnemyChange = True
 
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT:
                         self.movement[1] = False
+                    if event.key == pygame.K_SPACE:
+                        self.isEnemyChange = False
 
-            for enemy in self.enemy:
-                self.drawEnemy(enemy)
+            for i, enemy in enumerate(self.enemy):
+                self.drawEnemy(enemy, i)
 
-                if (self.collision(enemy.x, enemy.y, self.img_pos[0], self.img_pos[1])):
+                if self.collision(enemy["rect"].x, enemy["rect"].y, self.img_pos[0], self.img_pos[1]):
                     print("game over simon")
 
-                if (enemy.y > self.HEIGHT):
-                    enemy.y = random.randint(-100, 0)
-                    enemy.x = random.randint(0, self.WIDTH - 50)
-                enemy.y += 1
+                if enemy["rect"].y > self.HEIGHT:
+                    enemy["rect"].y = random.randint(-100, 0)
+                    enemy["rect"].x = random.randint(0, self.WIDTH - 50)
+                    enemy["move_count"] = 0  # Reset move count
 
+                enemy["rect"].y += 1
+
+                if self.isEnemyChange and enemy["space_sensitive"]:
+                    if enemy["move_count"] < 50:  # Limit moves to 50
+                        if enemy["rect"].x <= 0:
+                            enemy["direction"] = 1
+                        elif enemy["rect"].x >= self.WIDTH - enemy["rect"].width:
+                            enemy["direction"] = -1
+
+                        enemy["rect"].x += enemy["direction"] * 2
+                        enemy["move_count"] += 1  # Increment move count
+
+            # Spawn new enemies up to the maximum count
             self.spawn_timer += 1
             if self.spawn_timer > 120 and len(self.enemy) < self.max_enemy:
                 self.enemy.append(
-                    pygame.Rect(
-                        random.randint(0, self.WIDTH - 50),
-                        random.randint(-300, 0),
-                        50,
-                        50
-                    )
+                    {
+                        "rect": pygame.Rect(
+                            random.randint(0, self.WIDTH - 50),
+                            random.randint(-300, 0),
+                            50,
+                            50
+                        ),
+                        "direction": 1,
+                        "space_sensitive": random.choice([True, False]),
+                        "move_count": 0  # New enemies start with 0 moves
+                    }
                 )
                 self.spawn_timer = 0
 
