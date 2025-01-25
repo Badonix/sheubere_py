@@ -8,10 +8,8 @@ RATE = 44100
 
 
 def detect_blow():
-    # Initialize PyAudio
     p = pyaudio.PyAudio()
 
-    # Open audio stream
     stream = p.open(
         format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK
     )
@@ -21,11 +19,7 @@ def detect_blow():
         amplitude = np.linalg.norm(audio_data)
 
         return amplitude
-    except KeyboardInterrupt:
-        # Exit gracefully on Ctrl+C
-        print("Exiting...")
     finally:
-        # Close the audio stream
         stream.stop_stream()
         stream.close()
         p.terminate()
