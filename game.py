@@ -4,6 +4,7 @@ from data.scripts.utils import (
     generate_objects,
     save_player_name_to_file,
     save_player_to_server,
+    update_score_on_server,
 )
 from player import Player
 from blow_listener import blow_listener
@@ -316,6 +317,8 @@ class Game:
 
                     # Check collision with player
                     if enemy.check_collision(self.player_rect):
+                        print(self.score)
+                        update_score_on_server(self.player_name, self.score)
                         self.status = "gameover"
 
                 # Spawn new enemies up to the maximum count

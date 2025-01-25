@@ -76,7 +76,7 @@ def save_player_to_server(player_data):
 def update_score_on_server(name, score_change):
     try:
         response = requests.post(
-            f"{API_URL}/update_score", json={"name": name, "scoreChange": score_change}
+            f"{API_URL}/update_score", json={"name": name, "score": score_change}
         )
         if response.status_code == 200:
             return response.json().get("success", False)
