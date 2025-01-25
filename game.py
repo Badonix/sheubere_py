@@ -1,8 +1,7 @@
 import pygame
 import sys
 import random
-import math
-from button import Button
+from trash_enemy import TrashEnemy
 
 
 class Game:
@@ -17,59 +16,50 @@ class Game:
         self.img = pygame.image.load("data/images/player/player.png")
         self.img = pygame.transform.scale(self.img, (80, 80))
         self.img.set_colorkey((0, 0, 0))
-        self.enemy_img = pygame.image.load(
-            "data/images/entities/enemy/idle/00.png")
-        self.enemy_img = pygame.transform.scale(self.enemy_img, (50, 50))
-        self.movement = [False, False]
-        self.start_pos = [
-            self.screen.get_width() / 2 - self.img.get_width() / 2,
-            self.screen.get_height() - self.Y_OFFSET,
-        ]
-        self.img_pos = self.start_pos
 
-        self.enemy = [
-            {
-                "rect": pygame.Rect(
-                    random.randint(0, self.WIDTH -
-                                   self.enemy_img.get_width() - 5),
+        self.player_rect = pygame.Rect(
+            self.WIDTH // 2 - 40, self.HEIGHT - self.Y_OFFSET, 80, 80
+        )
+        self.movement = [False, False]
+        self.max_object = 10
+        self.min_distance = 100  # Minimum distance between objects
+
+        self.enemies = self.generate_objects(5)
+        self.trashes = self.generate_objects(5)
+
+        self.enemy_spawn_timer = 0
+        self.trash_spawn_timer = 0
+
+    def generate_objects(self, count):
+        """Generate objects ensuring they are not close to each other."""
+        objects = []
+        for _ in range(count):
+            while True:
+                new_object = TrashEnemy(
+                    random.randint(0, self.WIDTH - 50),
                     random.randint(-300, 0),
                     50,
-                    50
-                ),
-                "direction": random.choice([-1, 1]),
-                "space_sensitive": random.choices([True, False], weights=[3, 7])[0],
-                "move_count": 0  # Count of moves when spacebar is pressed
-            }
-
-            for _ in range(5)
-        ]
-        self.spawn_timer = 0
-        self.max_enemy = 10
-        self.isEnemyChange = False
-
-    def collision(self, x1, y1, x2, y2):
-        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) < 27
-
-    def drawEnemy(self, enemy, i):
-        enemyImgStr = f"enemy_{'1' if i % 3 else '2'}.png"
-        enemyImg = pygame.image.load(f"data/images/enemies/{enemyImgStr}")
-        enemyImg = pygame.transform.scale(enemyImg, (50, 50))
-        self.screen.blit(enemyImg, (enemy["rect"].x, enemy["rect"].y))
-
-    def drawButton(self, text, image):
-        return Button(image, (self.WIDTH / 2, self.HEIGHT / 2), text, 'sans-serif', (255, 255, 255), (250, 250, 250))
+                    50,
+                )
+                if all(
+                    TrashEnemy.check_distance(
+                        new_object.rect, obj.rect, self.min_distance)
+                    for obj in objects
+                ):
+                    objects.append(new_object)
+                    break
+        return objects
 
     def run(self):
         while True:
             self.screen.fill((14, 219, 248))
-            # Movement logic for the player
-            self.img_pos[0] += (self.movement[1] - self.movement[0]) * 5
-            self.screen.blit(self.img, self.img_pos)
 
-            if self.img_pos[0] < 12:
-                self.img_pos[0] = 12
-            if self.img_pos[0] > self.WIDTH - self.img.get_width() - 5:
-                self.img_pos[0] = self.WIDTH - self.img.get_width() - 5
+            # Draw and move player
+            self.player_rect.x += (self.movement[1] - self.movement[0]) * 5
+            self.player_rect.x = max(
+                0, min(self.WIDTH - self.player_rect.width, self.player_rect.x)
+            )
+            self.screen.blit(self.img, self.player_rect)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -81,57 +71,80 @@ class Game:
                         self.movement[0] = True
                     if event.key == pygame.K_RIGHT:
                         self.movement[1] = True
-                    if event.key == pygame.K_SPACE:
-                        self.isEnemyChange = True
 
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT:
                         self.movement[1] = False
-                    if event.key == pygame.K_SPACE:
-                        self.isEnemyChange = False
 
-            for i, enemy in enumerate(self.enemy):
-                self.drawEnemy(enemy, i)
+            # Update and draw enemies
+            for i, enemy in enumerate(self.enemies):
+                enemy.move(self.HEIGHT, self.WIDTH)
+                enemyImgStr = f"enemy_{'1' if i % 3 else '2'}.png"
+                image = pygame.image.load(f"data/images/enemies/{enemyImgStr}")
+                image = pygame.transform.scale(
+                    image, (enemy.rect.width, enemy.rect.height)
+                )
 
-                if self.collision(enemy["rect"].x, enemy["rect"].y, self.img_pos[0], self.img_pos[1]):
-                    print("game over simon")
+                enemy.draw(self.screen, image)
 
-                if enemy["rect"].y > self.HEIGHT:
-                    enemy["rect"].y = random.randint(-100, 0)
-                    enemy["rect"].x = random.randint(0, self.WIDTH - 50)
-                    enemy["move_count"] = 0  # Reset move count
-
-                enemy["rect"].y += 1
-
-                if self.isEnemyChange and enemy["space_sensitive"]:
-                    if enemy["move_count"] < 50:  # Limit moves to 50
-                        if enemy["rect"].x <= 0:
-                            enemy["direction"] = 1
-                        elif enemy["rect"].x >= self.WIDTH - enemy["rect"].width:
-                            enemy["direction"] = -1
-
-                        enemy["rect"].x += enemy["direction"] * 2
-                        enemy["move_count"] += 1  # Increment move count
+                # Check collision with player
+                if enemy.check_collision(self.player_rect):
+                    print("Game Over!")
 
             # Spawn new enemies up to the maximum count
-            self.spawn_timer += 1
-            if self.spawn_timer > 120 and len(self.enemy) < self.max_enemy:
-                self.enemy.append(
-                    {
-                        "rect": pygame.Rect(
-                            random.randint(0, self.WIDTH - 50),
-                            random.randint(-300, 0),
-                            50,
-                            50
-                        ),
-                        "direction": 1,
-                        "space_sensitive": random.choice([True, False]),
-                        "move_count": 0  # New enemies start with 0 moves
-                    }
+            self.enemy_spawn_timer += 1
+            if self.enemy_spawn_timer > 120 and len(self.enemies) < self.max_object:
+                while True:
+                    new_enemy = TrashEnemy(
+                        random.randint(0, self.WIDTH - 50),
+                        random.randint(-300, 0),
+                        50,
+                        50,
+                    )
+                    if all(
+                        TrashEnemy.check_distance(
+                            new_enemy.rect, enemy.rect, self.min_distance)
+                        for enemy in self.enemies
+                    ):
+                        self.enemies.append(new_enemy)
+                        break
+                self.enemy_spawn_timer = 0
+
+            # Update and draw trashes
+            for i, trash in enumerate(self.trashes):
+                trash.move(self.HEIGHT, self.WIDTH)
+                trashImgStr = f"trash{'1' if i % 3 else '3'}.png"
+                image = pygame.image.load(f"data/images/trash/{trashImgStr}")
+                image = pygame.transform.scale(
+                    image, (trash.rect.width, trash.rect.height)
                 )
-                self.spawn_timer = 0
+
+                trash.draw(self.screen, image)
+
+                # Check collision with player
+                if trash.check_collision(self.player_rect):
+                    print("Collect trash")
+
+            # Spawn new trashes up to the maximum count
+            self.trash_spawn_timer += 1
+            if self.trash_spawn_timer > 120 and len(self.trashes) < self.max_object:
+                while True:
+                    new_trash = TrashEnemy(
+                        random.randint(0, self.WIDTH - 50),
+                        random.randint(-300, 0),
+                        50,
+                        50,
+                    )
+                    if all(
+                        TrashEnemy.check_distance(
+                            new_trash.rect, trash.rect, self.min_distance)
+                        for trash in self.trashes
+                    ):
+                        self.trashes.append(new_trash)
+                        break
+                self.trash_spawn_timer = 0
 
             pygame.display.update()
             self.clock.tick(60)
