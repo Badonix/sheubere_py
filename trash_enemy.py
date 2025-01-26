@@ -4,12 +4,13 @@ import math
 
 
 class TrashEnemy:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, speed=2):
         self.rect = pygame.Rect(x, y, width, height)
+        self.speed = speed
 
     def move(self, height, screen_width, offset_y=0):
 
-        self.rect.y += 2
+        self.rect.y += self.speed
         if offset_y < 0:
             self.rect.y -= offset_y * 0.7
 

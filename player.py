@@ -21,6 +21,7 @@ class Player:
             width / 2 - image.get_width() / 2,
             height - 200,
         ]
+        self.is_in_wave = False
 
     def restart(self):
         self.velocity_y = 1
@@ -61,9 +62,10 @@ class Player:
         self.position[0] += self.velocity_x
         self.position[1] += self.velocity_y
 
-        self.position[0] = max(
-            0, min(screen_width - self.image.get_width(), self.position[0])
-        )
+        if not self.is_in_wave:
+            self.position[0] = max(
+                0, min(screen_width - self.image.get_width(), self.position[0])
+            )
         self.position[1] = max(
             self.height / 4,
             min(screen_height - self.image.get_height(), self.position[1]),
